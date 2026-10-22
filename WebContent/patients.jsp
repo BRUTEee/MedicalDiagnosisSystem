@@ -1,245 +1,269 @@
-<%@ page import="java.util.List" %>
-<%@ page import="com.medical.model.Patient" %>
-<%@ page import="com.medical.model.User" %>
+
+<%@ page import="java.util.List"%>
+<%@ page import="com.medical.model.Patient"%>
+<%@ page import="com.medical.model.User"%>
 
 <%
-    User user = (User) session.getAttribute("user");
+User user = (User) session.getAttribute("user");
 
-    if (user == null) {
-        response.sendRedirect("login.jsp");
-        return;
-    }
+if (user == null) {
+	response.sendRedirect(request.getContextPath() + "/login.jsp");
+	return;
+}
 
-    List<Patient> patients =
-        (List<Patient>) request.getAttribute("patients");
+String context = request.getContextPath();
+
+List<Patient> patients = (List<Patient>) request.getAttribute("patients");
 %>
 
+<%!private String escapeHtml(String value) {
+		if (value == null) {
+			return "Not provided";
+		}
+
+		return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+				.replace("'", "&#x27;");
+	}%>
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <meta charset="UTF-8">
+<title>Patients | Medical Diagnosis System</title>
 
-    <title>Patients</title>
+<link rel="stylesheet" href="<%=context%>/css/dashboard.css">
 
-    <link rel="stylesheet" href="css/dashboard.css">
+<style>
+.page-actions {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 16px;
+	flex-wrap: wrap;
+	margin-bottom: 25px;
+}
 
-    <style>
+.page-actions h1 {
+	margin-bottom: 8px;
+}
 
-        .page-actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-        }
+.page-actions p {
+	color: #64748b;
+	margin-top: 0;
+}
 
-        .table-card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 3px 12px rgba(0,0,0,0.06);
-            overflow-x: auto;
-        }
+.table-card {
+	background: white;
+	border-radius: 12px;
+	padding: 25px;
+	box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+	overflow-x: auto;
+}
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+table {
+	width: 100%;
+	border-collapse: collapse;
+	min-width: 850px;
+}
 
-        th,
-        td {
-            padding: 14px;
-            text-align: left;
-            border-bottom: 1px solid #e2e8f0;
-        }
+th, td {
+	padding: 14px;
+	text-align: left;
+	border-bottom: 1px solid #e2e8f0;
+}
 
-        th {
-            background: #f8fafc;
-            color: #475569;
-            font-size: 14px;
-        }
+th {
+	background: #f8fafc;
+	color: #475569;
+	font-size: 14px;
+	white-space: nowrap;
+}
 
-        td {
-            font-size: 14px;
-        }
+td {
+	font-size: 14px;
+	color: #334155;
+}
 
-        .add-btn {
-            text-decoration: none;
-            background: #2563eb;
-            color: white;
-            padding: 11px 18px;
-            border-radius: 7px;
-            font-weight: bold;
-        }
+tbody tr:hover {
+	background: #f8fafc;
+}
 
-        .add-btn:hover {
-            background: #1d4ed8;
-        }
+.add-btn {
+	display: inline-block;
+	text-decoration: none;
+	background: #2563eb;
+	color: white;
+	padding: 11px 18px;
+	border-radius: 7px;
+	font-weight: bold;
+	white-space: nowrap;
+}
 
-        .empty {
-            text-align: center;
-            padding: 35px;
-            color: #64748b;
-        }
+.add-btn:hover {
+	background: #1d4ed8;
+}
 
-    </style>
+.view-btn {
+	display: inline-block;
+	text-decoration: none;
+	background: #e0f2fe;
+	color: #0369a1;
+	padding: 8px 12px;
+	border-radius: 6px;
+	font-weight: bold;
+	font-size: 13px;
+	white-space: nowrap;
+}
 
+.view-btn:hover {
+	background: #bae6fd;
+}
+
+.empty {
+	text-align: center;
+	padding: 35px;
+	color: #64748b;
+}
+
+@media ( max-width : 600px) {
+	.table-card {
+		padding: 12px;
+	}
+	.page-actions {
+		align-items: flex-start;
+	}
+}
+</style>
 </head>
 
 <body>
 
-<div class="dashboard">
+	<div class="dashboard">
 
-    <aside class="sidebar">
+		<aside class="sidebar">
 
-        <div class="logo">
-            MEDICAL <span>ASSIST</span>
-        </div>
+			<div class="logo">
+				MEDICAL <span>ASSIST</span>
+			</div>
 
-        <ul class="nav">
+			<ul class="nav">
 
-            <li>
-                <a href="dashboard.jsp">Dashboard</a>
-            </li>
+				<li><a href="<%=context%>/dashboard.jsp">Dashboard</a></li>
 
-            <li>
-                <a href="patients" class="active">Patients</a>
-            </li>
+				<li><a href="<%=context%>/patients" class="active">Patients</a>
+				</li>
 
-            <li>
-                <a href="#">Appointments</a>
-            </li>
+				<li><a href="#">Appointments</a></li>
 
-            <li>
-                <a href="#">Diagnosis Assistance</a>
-            </li>
+				<li><a href="#">Diagnosis Assistance</a></li>
 
-            <li>
-                <a href="#">Reports</a>
-            </li>
+				<li><a href="#">Reports</a></li>
 
-            <li>
-                <a href="login.jsp">Logout</a>
-            </li>
+				<li><a href="<%=context%>/logout">Logout</a></li>
 
-        </ul>
+			</ul>
 
-    </aside>
+		</aside>
 
+		<main class="main-content">
 
-    <main class="main-content">
+			<div class="page-actions">
 
-        <div class="page-actions">
+				<div>
+					<h1>Patients</h1>
+					<p>Manage registered patients and view their details.</p>
+				</div>
 
-            <div>
+				<a href="<%=context%>/add-patient.jsp" class="add-btn"> + Add
+					Patient </a>
 
-                <h1>Patients</h1>
+			</div>
 
-                <p>Manage registered patients.</p>
+			<div class="table-card">
 
-            </div>
+				<table>
 
-            <a href="add-patient.jsp" class="add-btn">
-                + Add Patient
-            </a>
+					<thead>
+						<tr>
+							<th>ID</th>
+							<th>Name</th>
+							<th>Age</th>
+							<th>Gender</th>
+							<th>Blood Group</th>
+							<th>Phone</th>
+							<th>Email</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
 
-        </div>
+					<tbody>
 
+						<%
+						if (patients != null && !patients.isEmpty()) {
 
-        <div class="table-card">
+							for (Patient patient : patients) {
+						%>
 
-            <table>
+						<tr>
 
-                <thead>
+							<td><%=patient.getId()%></td>
 
-                    <tr>
+							<td><strong><%=escapeHtml(patient.getName())%></strong></td>
 
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Age</th>
-                        <th>Gender</th>
-                        <th>Blood Group</th>
-                        <th>Phone</th>
-                        <th>Email</th>
+							<td><%=patient.getAge()%></td>
 
-                    </tr>
+							<td><%=escapeHtml(patient.getGender())%></td>
 
-                </thead>
+							<td><%=escapeHtml(patient.getBloodGroup())%></td>
 
+							<td><%=escapeHtml(patient.getPhone())%></td>
 
-                <tbody>
+							<td><%=escapeHtml(patient.getEmail())%></td>
 
-                <%
-                    if (patients != null && !patients.isEmpty()) {
-
-                        for (Patient patient : patients) {
-                %>
-
-                    <tr>
 
                         <td>
-                            <%= patient.getId() %>
+                            <a
+                                href="<%= context %>/patient-details?id=<%= patient.getId() %>"
+                                class="view-btn">
+                                View
+                            </a>
+
+                            <a
+                                href="<%= context %>/patients?action=edit&id=<%= patient.getId() %>"
+                                class="view-btn">
+                                Edit
+                            </a>
                         </td>
 
-                        <td>
-                            <strong>
-                                <%= patient.getName() %>
-                            </strong>
-                        </td>
+						</tr>
 
-                        <td>
-                            <%= patient.getAge() %>
-                        </td>
+						<%
+						}
 
-                        <td>
-                            <%= patient.getGender() %>
-                        </td>
+						} else {
+						%>
 
-                        <td>
-                            <%= patient.getBloodGroup() %>
-                        </td>
+						<tr>
+							<td colspan="8" class="empty">No patients registered yet.
+								Click "Add Patient" to register the first patient.</td>
+						</tr>
 
-                        <td>
-                            <%= patient.getPhone() %>
-                        </td>
+						<%
+						}
+						%>
 
-                        <td>
-                            <%= patient.getEmail() %>
-                        </td>
+					</tbody>
 
-                    </tr>
+				</table>
 
-                <%
-                        }
+			</div>
 
-                    } else {
-                %>
+		</main>
 
-                    <tr>
-
-                        <td colspan="7" class="empty">
-
-                            No patients registered yet.
-
-                        </td>
-
-                    </tr>
-
-                <%
-                    }
-                %>
-
-                </tbody>
-
-            </table>
-
-        </div>
-
-    </main>
-
-</div>
+	</div>
 
 </body>
-
 </html>
