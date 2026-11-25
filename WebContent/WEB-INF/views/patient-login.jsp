@@ -21,7 +21,6 @@
     <div class="login-card">
         <div class="logo">MEDICAL <span>ASSIST</span></div>
         <h1>Patient Portal</h1>
-        <p class="subtitle">Demo-only portal using synthetic data.</p>
 <%
     if (configurationMessage != null) {
 %>

@@ -19,8 +19,8 @@ public class PatientDAO {
     public int addPatient(Patient patient) {
 
         String sql = "INSERT INTO patients "
-                   + "(name, age, gender, blood_group, phone, email, address) "
-                   + "VALUES (?, ?, ?, ?, ?, ?, ?)";
+                   + "(name, age, gender, blood_group, phone, email, address, password_hash) "
+                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (
             Connection connection = DBConnection.getConnection();
@@ -29,6 +29,7 @@ public class PatientDAO {
         ) {
 
             bind(statement, patient);
+            statement.setString(8, patient.getPasswordHash());
             statement.executeUpdate();
 
             try (ResultSet keys = statement.getGeneratedKeys()) {
@@ -169,7 +170,7 @@ public class PatientDAO {
 
         String sql = "UPDATE patients SET "
                    + "name = ?, age = ?, gender = ?, blood_group = ?, "
-                   + "phone = ?, email = ?, address = ? "
+                   + "phone = ?, email = ?, address = ?, password_hash = ? "
                    + "WHERE id = ?";
 
         try (
@@ -178,7 +179,8 @@ public class PatientDAO {
         ) {
 
             bind(statement, patient);
-            statement.setInt(8, patient.getId());
+            statement.setString(8, patient.getPasswordHash());
+            statement.setInt(9, patient.getId());
 
             // MySQL reports zero rows when the values are unchanged, so
             // confirm existence separately in that case.
@@ -224,6 +226,7 @@ public class PatientDAO {
         statement.setString(5, patient.getPhone());
         statement.setString(6, patient.getEmail());
         statement.setString(7, patient.getAddress());
+        statement.setString(8, patient.getPasswordHash());
     }
 
     private Patient map(ResultSet resultSet) throws SQLException {
@@ -238,6 +241,7 @@ public class PatientDAO {
         patient.setPhone(resultSet.getString("phone"));
         patient.setEmail(resultSet.getString("email"));
         patient.setAddress(resultSet.getString("address"));
+        patient.setPasswordHash(resultSet.getString("password_hash"));
         patient.setCreatedAt(resultSet.getTimestamp("created_at"));
 
         return patient;

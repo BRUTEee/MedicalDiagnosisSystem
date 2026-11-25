@@ -10,6 +10,7 @@ public class Patient {
     private String phone;
     private String email;
     private String address;
+    private String passwordHash;
     private java.sql.Timestamp createdAt;
 
     public Patient() {
@@ -83,6 +84,14 @@ public class Patient {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
     }
 
     public java.sql.Timestamp getCreatedAt() {

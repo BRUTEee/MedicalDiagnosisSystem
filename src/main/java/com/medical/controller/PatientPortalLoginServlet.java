@@ -9,6 +9,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
+import com.medical.dao.PatientDAO;
+import com.medical.model.Patient;
 import com.medical.model.PatientPortalSession;
 import com.medical.util.AppConfig;
 import com.medical.util.Csrf;
@@ -21,6 +23,7 @@ public class PatientPortalLoginServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
     private static final String VIEW = "/WEB-INF/views/patient-login.jsp";
     private LoginAttemptLimiter loginAttemptLimiter;
+    private PatientDAO patientDAO;
 
     @Override
     public void init() {
@@ -29,6 +32,7 @@ public class PatientPortalLoginServlet extends HttpServlet {
                 positiveIntConfig("login.window-seconds", 900) * 1000L,
                 positiveIntConfig("login.lock-seconds", 900) * 1000L,
                 positiveIntConfig("login.max-clients", 10000));
+        patientDAO = new PatientDAO();
     }
 
     private int positiveIntConfig(String key, int defaultValue) {
@@ -46,12 +50,6 @@ public class PatientPortalLoginServlet extends HttpServlet {
                          HttpServletResponse response)
             throws ServletException, IOException {
         response.setHeader("Cache-Control", "no-store");
-        if (AppConfig.get("patient-demo.id", null) == null
-                || !PasswordUtil.isHashed(
-                        AppConfig.get("patient-demo.password-hash", null))) {
-            request.setAttribute("configurationMessage",
-                    "The demo patient portal has not been configured.");
-        }
         Csrf.token(request.getSession(true));
         request.getRequestDispatcher(VIEW).forward(request, response);
     }
@@ -74,21 +72,26 @@ public class PatientPortalLoginServlet extends HttpServlet {
             return;
         }
 
-        String expectedId = AppConfig.get("patient-demo.id", null);
-        String expectedHash = AppConfig.get("patient-demo.password-hash", null);
-        String patientId = request.getParameter("patientId");
+        String patientIdParam = request.getParameter("patientId");
         String password = request.getParameter("password");
-        boolean valid = expectedId != null && expectedHash != null
-                && patientId != null && password != null
-                && PasswordUtil.isHashed(expectedHash)
-                && expectedId.equals(patientId.trim())
-                && PasswordUtil.verify(password, expectedHash);
+        boolean valid = false;
+        Patient patient = null;
+
+        if (patientIdParam != null && password != null) {
+            try {
+                int patientId = Integer.parseInt(patientIdParam.trim());
+                patient = patientDAO.getPatientById(patientId);
+                if (patient != null && patient.getPasswordHash() != null && !patient.getPasswordHash().isEmpty()) {
+                    valid = PasswordUtil.verify(password, patient.getPasswordHash());
+                }
+            } catch (NumberFormatException ignored) {}
+        }
 
         if (!valid) {
             loginAttemptLimiter.recordFailure(clientKey, System.currentTimeMillis());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             request.setAttribute("error", "Invalid patient ID or password.");
-            request.setAttribute("patientId", patientId);
+            request.setAttribute("patientId", patientIdParam);
             request.getRequestDispatcher(VIEW).forward(request, response);
             return;
         }
@@ -101,8 +104,7 @@ public class PatientPortalLoginServlet extends HttpServlet {
 
         HttpSession session = request.getSession(true);
         session.setAttribute("patientPortal",
-                new PatientPortalSession(expectedId,
-                        AppConfig.get("patient-demo.name", "Demo patient")));
+                new PatientPortalSession(String.valueOf(patient.getId()), patient.getName()));
         Csrf.token(session);
         response.sendRedirect(request.getContextPath() + "/patient-dashboard");
     }
