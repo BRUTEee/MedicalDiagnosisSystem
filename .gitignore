@@ -1,19 +1,27 @@
 # Eclipse
 .metadata/
 bin/
+build/
 tmp/
 *.tmp
 *.bak
 *.swp
 
+# Maven
+target/
+
 # Java
 *.class
 
-# Local database credentials
+# Local configuration containing credentials
 config/db.properties
+WebContent/WEB-INF/app.properties
 
 # Eclipse server/runtime files
 Servers/
+
+# Stray bare repository copy
+MedicalDiagnosisSystem-cleanup.git/
 
 # OS files
 .DS_Store

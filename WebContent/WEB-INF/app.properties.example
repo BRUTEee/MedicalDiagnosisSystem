@@ -1,0 +1,39 @@
+# Copy this file to app.properties (same folder) and fill in real values.
+# app.properties is ignored by Git. Each value can also be supplied through
+# the environment variable named in the comment, which takes precedence.
+
+# MDS_DB_URL
+db.url=jdbc:mysql://localhost:3306/medical_diagnosis
+# MDS_DB_USERNAME
+db.username=medical_app
+# MDS_DB_PASSWORD
+db.password=CHANGE_ME
+
+# Local Ollama server used by the Medical Assistant chat.
+# MDS_OLLAMA_URL
+ollama.url=http://localhost:11434/api/chat
+# MDS_OLLAMA_MODEL
+ollama.model=qwen2.5:1.5b
+
+# Enable in a tested production deployment with TLS at a trusted connector/proxy.
+# The container must mark trusted HTTPS requests secure and cookies Secure.
+# Session cookies use SameSite=Lax.
+# MDS_SECURITY_REQUIRE_HTTPS
+security.require-https=false
+
+# Login throttling limits per client IP; defaults are 5 failures per 15 minutes,
+# followed by a 15-minute lock. These limits are process-local, not cluster-wide.
+# MDS_LOGIN_MAX_FAILURES, MDS_LOGIN_WINDOW_SECONDS, MDS_LOGIN_LOCK_SECONDS,
+# MDS_LOGIN_MAX_CLIENTS
+login.max-failures=5
+login.window-seconds=900
+login.lock-seconds=900
+login.max-clients=10000
+
+# Synthetic-only patient portal demo account. Never link this account to live records.
+# Generate a PBKDF2 hash with the PasswordHashTool; do not store a plaintext password here.
+patient-demo.id=DEMO-1001
+patient-demo.name=Demo Patient
+patient-demo.password-hash=REPLACE_WITH_PBKDF2_HASH
+
+

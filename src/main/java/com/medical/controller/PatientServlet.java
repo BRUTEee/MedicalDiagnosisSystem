@@ -1,4 +1,3 @@
-
 package com.medical.controller;
 
 import java.io.IOException;
@@ -9,34 +8,39 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 
+import com.medical.dao.AppointmentDAO;
+import com.medical.dao.DiagnosisDAO;
 import com.medical.dao.PatientDAO;
 import com.medical.model.Patient;
-import com.medical.model.User;
+import com.medical.util.Flash;
+import com.medical.util.PatientValidator;
 
+/**
+ * Patient list, registration, editing and deletion.
+ *
+ * GET  /patients                 list (optional ?q= search)
+ * GET  /patients?action=new      registration form
+ * GET  /patients?action=edit&id= edit form
+ * POST /patients action=create | update | delete
+ */
 @WebServlet("/patients")
 public class PatientServlet extends HttpServlet {
 
+    private static final long serialVersionUID = 1L;
+
+    private static final String LIST_VIEW = "/WEB-INF/views/patients.jsp";
+    private static final String FORM_VIEW = "/WEB-INF/views/patient-form.jsp";
+
     private PatientDAO patientDAO;
+    private DiagnosisDAO diagnosisDAO;
+    private AppointmentDAO appointmentDAO;
 
     @Override
     public void init() {
         patientDAO = new PatientDAO();
-    }
-
-    private boolean isLoggedIn(HttpServletRequest request,
-                               HttpServletResponse response)
-            throws IOException {
-
-        HttpSession session = request.getSession(false);
-
-        if (session == null || !(session.getAttribute("user") instanceof User)) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp");
-            return false;
-        }
-
-        return true;
+        diagnosisDAO = new DiagnosisDAO();
+        appointmentDAO = new AppointmentDAO();
     }
 
     @Override
@@ -44,54 +48,49 @@ public class PatientServlet extends HttpServlet {
                          HttpServletResponse response)
             throws ServletException, IOException {
 
-        if (!isLoggedIn(request, response)) {
+        String action = request.getParameter("action");
+
+        if ("new".equals(action)) {
+            request.setAttribute("patient", new Patient());
+            request.getRequestDispatcher(FORM_VIEW).forward(request, response);
             return;
         }
-
-        String action = request.getParameter("action");
 
         if ("edit".equals(action)) {
 
-            String idParameter = request.getParameter("id");
+            int id = parseId(request.getParameter("id"));
 
-            try {
-                int id = Integer.parseInt(idParameter);
-
-                if (id <= 0) {
-                    throw new NumberFormatException();
-                }
-
-                Patient patient = patientDAO.getPatientById(id);
-
-                if (patient == null) {
-                    response.sendError(
-                        HttpServletResponse.SC_NOT_FOUND,
-                        "Patient not found."
-                    );
-                    return;
-                }
-
-                request.setAttribute("patient", patient);
-
-                request.getRequestDispatcher("/edit-patient.jsp")
-                       .forward(request, response);
-
-            } catch (NumberFormatException e) {
+            if (id <= 0) {
                 response.sendError(
-                    HttpServletResponse.SC_BAD_REQUEST,
-                    "Invalid patient ID."
-                );
+                    HttpServletResponse.SC_BAD_REQUEST, "Invalid patient ID.");
+                return;
             }
 
+            Patient patient = patientDAO.getPatientById(id);
+
+            if (patient == null) {
+                response.sendError(
+                    HttpServletResponse.SC_NOT_FOUND, "Patient not found.");
+                return;
+            }
+
+            request.setAttribute("patient", patient);
+            request.getRequestDispatcher(FORM_VIEW).forward(request, response);
             return;
         }
 
-        List<Patient> patients = patientDAO.getAllPatients();
+        String query = request.getParameter("q");
+
+        if (query != null && query.length() > 100) {
+            query = query.substring(0, 100);
+        }
+
+        List<Patient> patients = patientDAO.searchPatients(query);
 
         request.setAttribute("patients", patients);
+        request.setAttribute("query", query == null ? "" : query.trim());
 
-        request.getRequestDispatcher("/patients.jsp")
-               .forward(request, response);
+        request.getRequestDispatcher(LIST_VIEW).forward(request, response);
     }
 
     @Override
@@ -99,113 +98,129 @@ public class PatientServlet extends HttpServlet {
                           HttpServletResponse response)
             throws ServletException, IOException {
 
-        if (!isLoggedIn(request, response)) {
-            return;
-        }
-
-        request.setCharacterEncoding("UTF-8");
-
         String action = request.getParameter("action");
 
-        if ("update".equals(action)) {
-            updatePatient(request, response);
-            return;
-        }
-
-        // Existing add-patient functionality.
-        try {
-            String name = request.getParameter("name");
-            int age = Integer.parseInt(request.getParameter("age"));
-            String gender = request.getParameter("gender");
-            String bloodGroup = request.getParameter("bloodGroup");
-            String phone = request.getParameter("phone");
-            String email = request.getParameter("email");
-            String address = request.getParameter("address");
-
-            if (name == null || name.isBlank()
-                    || age < 1 || age > 120) {
-                throw new IllegalArgumentException("Invalid patient details.");
-            }
-
-            Patient patient = new Patient();
-            patient.setName(name.trim());
-            patient.setAge(age);
-            patient.setGender(gender);
-            patient.setBloodGroup(bloodGroup);
-            patient.setPhone(phone);
-            patient.setEmail(email);
-            patient.setAddress(address);
-
-            boolean success = patientDAO.addPatient(patient);
-
-            if (success) {
-                response.sendRedirect(request.getContextPath() + "/patients");
-            } else {
-                request.setAttribute("error", "Unable to add patient.");
-                request.getRequestDispatcher("/add-patient.jsp")
-                       .forward(request, response);
-            }
-
-        } catch (IllegalArgumentException e) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            request.setAttribute("error", "Enter a valid name and age.");
-            request.getRequestDispatcher("/add-patient.jsp")
-                   .forward(request, response);
+        if ("delete".equals(action)) {
+            deletePatient(request, response);
+        } else if ("update".equals(action)) {
+            savePatient(request, response, true);
+        } else {
+            savePatient(request, response, false);
         }
     }
 
-    private void updatePatient(HttpServletRequest request,
-                               HttpServletResponse response)
+    private void savePatient(HttpServletRequest request,
+                             HttpServletResponse response,
+                             boolean update)
             throws ServletException, IOException {
 
-        try {
-            int id = Integer.parseInt(request.getParameter("id"));
-            int age = Integer.parseInt(request.getParameter("age"));
+        Patient patient = new Patient();
 
-            String name = request.getParameter("name");
-            String gender = request.getParameter("gender");
-            String bloodGroup = request.getParameter("bloodGroup");
-            String phone = request.getParameter("phone");
-            String email = request.getParameter("email");
-            String address = request.getParameter("address");
+        if (update) {
+            int id = parseId(request.getParameter("id"));
 
-            if (id <= 0 || name == null || name.isBlank()
-                    || age < 1 || age > 120) {
-                throw new IllegalArgumentException("Invalid patient details.");
+            if (id <= 0) {
+                response.sendError(
+                    HttpServletResponse.SC_BAD_REQUEST, "Invalid patient ID.");
+                return;
             }
 
-            Patient patient = new Patient();
             patient.setId(id);
-            patient.setName(name.trim());
-            patient.setAge(age);
-            patient.setGender(gender);
-            patient.setBloodGroup(bloodGroup);
-            patient.setPhone(phone);
-            patient.setEmail(email);
-            patient.setAddress(address);
+        }
 
-            boolean success = patientDAO.updatePatient(patient);
+        patient.setName(request.getParameter("name"));
+        patient.setAge(parseId(request.getParameter("age")));
+        patient.setGender(request.getParameter("gender"));
+        patient.setBloodGroup(request.getParameter("bloodGroup"));
+        patient.setPhone(request.getParameter("phone"));
+        patient.setEmail(request.getParameter("email"));
+        patient.setAddress(request.getParameter("address"));
 
-            if (success) {
-                response.sendRedirect(request.getContextPath() + "/patients");
-            } else {
-                request.setAttribute("error",
-                    "Unable to update patient. Check the patient ID and database.");
-                request.setAttribute("patient", patient);
-                request.getRequestDispatcher("/edit-patient.jsp")
-                       .forward(request, response);
+        PatientValidator.normalize(patient);
+
+        List<String> errors = PatientValidator.validate(patient);
+
+        if (!errors.isEmpty()) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            request.setAttribute("errors", errors);
+            request.setAttribute("patient", patient);
+            request.getRequestDispatcher(FORM_VIEW).forward(request, response);
+            return;
+        }
+
+        if (update) {
+
+            if (!patientDAO.updatePatient(patient)) {
+                response.sendError(
+                    HttpServletResponse.SC_NOT_FOUND, "Patient not found.");
+                return;
             }
 
-        } catch (NumberFormatException e) {
+            Flash.success(request, "Patient details updated.");
+            response.sendRedirect(request.getContextPath()
+                    + "/patient-details?id=" + patient.getId());
+            return;
+        }
+
+        int id = patientDAO.addPatient(patient);
+
+        Flash.success(request, "Patient registered.");
+
+        response.sendRedirect(request.getContextPath()
+                + (id > 0 ? "/patient-details?id=" + id : "/patients"));
+    }
+
+    private void deletePatient(HttpServletRequest request,
+                               HttpServletResponse response)
+            throws IOException {
+
+        int id = parseId(request.getParameter("id"));
+
+        if (id <= 0) {
             response.sendError(
-                HttpServletResponse.SC_BAD_REQUEST,
-                "Invalid patient ID or age."
-            );
-        } catch (IllegalArgumentException e) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            request.setAttribute("error", "Enter a valid name and age.");
-            request.getRequestDispatcher("/edit-patient.jsp")
-                   .forward(request, response);
+                HttpServletResponse.SC_BAD_REQUEST, "Invalid patient ID.");
+            return;
+        }
+
+        // Assessment records are part of the clinical history and are never
+        // removed implicitly, so a patient who has any cannot be deleted.
+        if (diagnosisDAO.getDiagnosisCountForPatient(id) > 0) {
+            Flash.error(request,
+                "This patient has assessment records and cannot be deleted.");
+            response.sendRedirect(request.getContextPath()
+                    + "/patient-details?id=" + id);
+            return;
+        }
+
+        if (appointmentDAO.isAvailable()
+                && appointmentDAO.hasAppointmentsByPatientId(id)) {
+            Flash.error(request,
+                "This patient has appointment records and cannot be deleted.");
+            response.sendRedirect(request.getContextPath()
+                    + "/patient-details?id=" + id);
+            return;
+        }
+
+        if (patientDAO.deletePatient(id)) {
+            Flash.success(request, "Patient deleted.");
+        } else {
+            Flash.error(request, "Patient not found.");
+        }
+
+        response.sendRedirect(request.getContextPath() + "/patients");
+    }
+
+    /** Parses a positive integer; returns 0 when the value is not valid. */
+    static int parseId(String value) {
+
+        if (value == null) {
+            return 0;
+        }
+
+        try {
+            return Math.max(0, Integer.parseInt(value.trim()));
+        } catch (NumberFormatException e) {
+            return 0;
         }
     }
 }

@@ -1,26 +1,33 @@
-
 package com.medical.controller;
 
 import java.io.IOException;
+import java.util.List;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 
+import com.medical.dao.AppointmentDAO;
+import com.medical.dao.DiagnosisDAO;
 import com.medical.dao.PatientDAO;
 import com.medical.model.Patient;
 
 @WebServlet("/patient-details")
 public class PatientDetailsServlet extends HttpServlet {
 
+    private static final long serialVersionUID = 1L;
+
     private PatientDAO patientDAO;
+    private DiagnosisDAO diagnosisDAO;
+    private AppointmentDAO appointmentDAO;
 
     @Override
     public void init() {
         patientDAO = new PatientDAO();
+        diagnosisDAO = new DiagnosisDAO();
+        appointmentDAO = new AppointmentDAO();
     }
 
     @Override
@@ -28,46 +35,34 @@ public class PatientDetailsServlet extends HttpServlet {
                          HttpServletResponse response)
             throws ServletException, IOException {
 
-        // Ensure the user is logged in.
-        HttpSession session = request.getSession(false);
+        int patientId = PatientServlet.parseId(request.getParameter("id"));
 
-        if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp");
-            return;
-        }
-
-        // Validate the patient ID.
-        String idParameter = request.getParameter("id");
-        int patientId;
-
-        try {
-            patientId = Integer.parseInt(idParameter);
-
-            if (patientId <= 0) {
-                throw new NumberFormatException();
-            }
-        } catch (NumberFormatException e) {
+        if (patientId <= 0) {
             response.sendError(
-                HttpServletResponse.SC_BAD_REQUEST,
-                "Invalid patient ID."
-            );
+                HttpServletResponse.SC_BAD_REQUEST, "Invalid patient ID.");
             return;
         }
 
-        // Retrieve the patient.
         Patient patient = patientDAO.getPatientById(patientId);
 
         if (patient == null) {
             response.sendError(
-                HttpServletResponse.SC_NOT_FOUND,
-                "Patient not found."
-            );
+                HttpServletResponse.SC_NOT_FOUND, "Patient not found.");
             return;
         }
 
-        request.setAttribute("patient", patient);
+        boolean appointmentsAvailable = appointmentDAO.isAvailable();
 
-        request.getRequestDispatcher("/patient-details.jsp")
+        request.setAttribute("patient", patient);
+        request.setAttribute("assessments",
+                diagnosisDAO.getDiagnosesByPatientId(patientId));
+        request.setAttribute("appointmentsAvailable", appointmentsAvailable);
+        request.setAttribute("appointments",
+                appointmentsAvailable
+                    ? appointmentDAO.getAppointmentsByPatientId(patientId)
+                    : List.of());
+
+        request.getRequestDispatcher("/WEB-INF/views/patient-details.jsp")
                .forward(request, response);
     }
 }

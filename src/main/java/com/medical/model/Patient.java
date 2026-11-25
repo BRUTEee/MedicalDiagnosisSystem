@@ -10,6 +10,7 @@ public class Patient {
     private String phone;
     private String email;
     private String address;
+    private java.sql.Timestamp createdAt;
 
     public Patient() {
     }
@@ -82,6 +83,14 @@ public class Patient {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public java.sql.Timestamp getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(java.sql.Timestamp createdAt) {
+        this.createdAt = createdAt;
     }
 
     public String getAddress() {

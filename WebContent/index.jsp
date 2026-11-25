@@ -2,6 +2,10 @@
 <html>
 
 <head>
+<%@ page import="com.medical.util.View" %>
+<%
+    String cspNonce = (String) request.getAttribute("cspNonce");
+%>
 
 <meta charset="UTF-8">
 
@@ -9,7 +13,7 @@
 
 <title>Medical Diagnosis Assistance System</title>
 
-<style>
+<style nonce="<%= View.esc(cspNonce) %>">
 * {
 	margin: 0;
 	padding: 0;
@@ -222,7 +226,10 @@ footer {
 			MEDICAL <span>ASSIST</span>
 		</div>
 
-		<a href="login.jsp" class="nav-login"> Doctor Login </a>
+		<div>
+			<a href="login" class="nav-login">Doctor Login</a>
+			<a href="patient-login" class="nav-login">Patient Portal</a>
+		</div>
 
 	</nav>
 
@@ -241,7 +248,7 @@ footer {
 				professionals manage patients and support clinical diagnosis through
 				structured patient information and medical analysis.</p>
 
-			<a href="login.jsp" class="hero-btn"> Get Started </a> <a
+			<a href="login" class="hero-btn"> Get Started </a> <a
 				href="#features" class="hero-btn secondary"> Explore System </a>
 
 		</div>
